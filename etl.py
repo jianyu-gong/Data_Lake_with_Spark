@@ -15,6 +15,12 @@ os.environ['AWS_SECRET_ACCESS_KEY']=config['CREDENTIALS']['AWS_SECRET_ACCESS_KEY
 
 
 def create_spark_session():
+    """
+    This function is used to create Spark session. Input Spark config into function.
+    :param N/A
+    :param N/A
+    :return: N/A
+    """
     spark = SparkSession \
         .builder \
         .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:2.7.0") \
@@ -23,8 +29,16 @@ def create_spark_session():
 
 
 def process_song_data(spark, input_data, output_data):
+    """
+    This function is used to extract data from song json file and select necessary columns into song table and artists table. 
+    Write and save tables in S3 as parquet.
+    :param spark: Spark Session
+    :param input_data: input data file path - in this case S3 path
+    :param output_data: output data file path - in this case S3 path
+    :return: N/A
+    """ 
     # get filepath to song data file
-    song_data = input_data + "song-data/A/A/A/*.json"
+    song_data = input_data + "song-data/*/*/*/*.json"
     
     # define table schema
     songdata_schema = StructType([
@@ -64,6 +78,14 @@ def process_song_data(spark, input_data, output_data):
 
 
 def process_log_data(spark, input_data, output_data):
+    """
+    This function is used to extract data from logs json file and select necessary columns into user table, 
+    time table and songplay table. Write and save tables in S3 as parquet.
+    :param spark: Spark Session
+    :param input_data: input data file path - in this case S3 path
+    :param output_data: output data file path - in this case S3 path
+    :return: N/A
+    """ 
     # get filepath to log data file
     log_data = input_data + "log-data"
     
@@ -126,12 +148,12 @@ def process_log_data(spark, input_data, output_data):
 
     # extract columns from joined song and log datasets to create songplays table 
     songplays_table = spark.sql('''
-                                  SELECT datetime as l.start_time, l.userId as user_id, l.level, qry.song_id, 
-                                  qry.artist_id, l.sessionId as session_id, l.location, l.userAgent as user_agent
-                                  FROM user_log_table l
-                                  LEFT JOIN (SELECT artist_id, artist_name, song_id, title) as qry
-                                  ON l.song = qry.title, l.artist = qry.artist_name
-                                  WHERE l.page = 'NextSong'
+                                SELECT l.datetime as start_time, l.userId as user_id, l.level, qry.song_id, qry.artist_id, 
+                                l.sessionId as session_id, l.location, l.userAgent as user_agent
+                                FROM logs l
+                                LEFT JOIN (SELECT artist_id, artist_name, song_id, title FROM songs) as qry
+                                ON (l.song = qry.title AND l.artist = qry.artist_name)
+                                WHERE l.page = 'NextSong'
                                 ''')
 
     # write songplays table to parquet files partitioned by year and month
